@@ -1,0 +1,3 @@
+[console_scripts]
+FLED = FLED.longreadscircDNAdetection:main
+
