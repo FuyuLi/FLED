@@ -711,6 +711,8 @@ def Coverage_count(ont_bam, Junctions, revisedJunc, verbose, filtering_level) :
 
 
 def output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, Label, filtering_level, eccDNAseq, revisedJunc, verbose) :
+    eccDNAnum = 0
+    FulleccDNAnum = 0
     if filtering_level == 'high' :
         supporting_reads = 5
         P_value = 0.01
@@ -742,23 +744,25 @@ def output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannw
             elif Tag[read] == 'BreakBSJ' :
                 BreakBSJNum += 1
         if FullBSJNum == 0 and FullJuncNum == 0 :
-            tag = Label + '_Break'
+            tag = Label + '\tBreak'
             BreakJunc.append(junction)
         else :
-            tag = Label + '_Full'
+            tag = Label + '\tFull'
             FullJunc.append(junction)
         readscount = FullJuncNum + FullBSJNum + BreakBSJNum
         if (readscount >= supporting_reads) and (ratiocovL[junction] > ratio) and (ratiocovR[junction] > ratio) and (mannwhitneyuL[junction] < P_value) and (mannwhitneyuR[junction] < P_value) :
-            juncrecord = '\t'.join([revisedJunc[junction], tag, str(FullJuncNum), str(FullBSJNum), str(BreakBSJNum), str(mannwhitneyuL[junction]), str(mannwhitneyuR[junction]),
+            juncrecord = '\t'.join([revisedJunc[junction], tag, str(FullJuncNum + FullBSJNum), str(BreakBSJNum), str(mannwhitneyuL[junction]), str(mannwhitneyuR[junction]),
                             str(ratiocovL[junction]), str(ratiocovR[junction]), str(Junctions[junction])])
             outFile.write(juncrecord + '\n')
-            if tag == Label + '_Full' :
+            eccDNAnum += 1
+            if tag == Label + '\tFull' :
                 junc = JuncInfo(revisedJunc[junction].split('\t'))
                 farecord = '> ' + junc.chrom + ':' + str(junc.startpos) + '-' + str(junc.endpos) + '\t' + tag + '\n' + eccDNAseq[junction] + '\n'
                 outFa.write(farecord)
+                FulleccDNAnum += 1
     outFa.close()
     outFile.close()
-    return(FullJunc, BreakJunc)
+    return(FullJunc, BreakJunc, eccDNAnum, FulleccDNAnum)
 
 #FullJunc, BreakJunc = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, label, filter_level,eccDNAseq, revisedJunc)
 

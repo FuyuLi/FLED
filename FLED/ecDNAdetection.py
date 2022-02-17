@@ -68,7 +68,7 @@ class detection:
         ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(self.ont_bam, Junctions, revisedJunc, self.verbose, self.filter_level)  #need to multiple threads
 
         #OutPut
-        FullJunc, BreakJunc = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, self.label, self.filter_level,
+        FullJunc, BreakJunc, eccDNAnum, FulleccDNAnum = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, self.label, self.filter_level,
                eccDNAseq, revisedJunc, self.verbose)
 
 
@@ -87,11 +87,12 @@ class detection:
         if self.verbose >= 3:
             print("finished ecDNA Detection. Elapsed time:", (end - begin) / 60, "mins")
             print("**********Report**********")
+            print(("Sample Name:        %s") % str(self.label))
             print(("Detected Reads:     %s") % str(readnum))
             print(("Mapped Reads:       %s") % str(mappedreadsnum))
             print(("Full-length Reads:  %s") % str(Fullread))
-            print(("Detected eccDNA:    %s") % str(len(Junctions)))
-            print(("Full-length eccDNA: %s") % str(len(FullJunc)))
+            print(("Detected eccDNA:    %s") % str(eccDNAnum))
+            print(("Full-length eccDNA: %s") % str(FulleccDNAnum))
             print("**************************")
             print("Thanks for using FLED")
 
