@@ -1,7 +1,7 @@
 # FLED
 Full Length eccDNA detection
 
-## Installation requirements
+## Requirements
 * Software
 * Package (python 3 +)
     - [pysam](http://pysam.readthedocs.org/en/latest/) (>=0.16)
