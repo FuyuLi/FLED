@@ -14,7 +14,7 @@ Full Length eccDNA detection
  
 ## Installation
 ```bash
-git clone https://github.com/FuyuLi/FLED
+git clone https://github.com/FuyuLi/FLED.git
 cd FLED
 python ./setup.py install
 ```
