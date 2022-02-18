@@ -28,8 +28,7 @@ samtools faidx $genome
 
 2) Indexed coordinate sorted bam file
 ```
-minimap2 -t 10 -ax map-ont $$genome $fastq > align.sam
-samtools sort -@ 4 -O bam -o align.sorted.bam align.sam
+minimap2 -t 10 -ax map-ont $genome $fastq | samtools sort -@ 4 -O bam -o align.sorted.bam
 samtools index  -@ 10 align.sorted.bam align.sorted.bam.bai
 ```
 
