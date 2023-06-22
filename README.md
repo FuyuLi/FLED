@@ -65,7 +65,9 @@ optional arguments:
 ```
 
 ### Example
+```
 FLED Detection -i align.sorted.bam -fq example.q7.fastq -o example -dir FLEDoutput -t 8
+```
 
 ## Output
 | File name         |  Details | 
