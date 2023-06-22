@@ -9,8 +9,8 @@ Full Length eccDNA detection
     - [progressbar](https://pypi.org/project/progressbar)(>=2.5)
     - [biopython](https://biopython.org/)(>=1.76)
     - [numpy](https://numpy.org/)(>=1.19.1)
-    - [pyspoa](https://pypi.org/project/pyspoa/)(==0.0.5)
-    - [scipy](https://pypi.org/project/scipy/)(>=1.5.3)
+    - [pyspoa](https://pypi.org/project/pyspoa/)(==0.0.6)
+    - [scipy](https://pypi.org/project/scipy/)(==1.5.3)
  
 ## Installation
 ```bash
