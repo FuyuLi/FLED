@@ -10,7 +10,7 @@ setup(name='FLED',
       packages=find_packages(),
       install_requires=[
           'pysam==0.16','networkx==2.5','progressbar==2.5','biopython==1.76','numpy>=1.19.1',
-          'pyspoa==0.0.5','scipy>=1.5.3'
+          'pyspoa==0.0.6','scipy==1.5.3'
       ],
       entry_points={
           'console_scripts': [
