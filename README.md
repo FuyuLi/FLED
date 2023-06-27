@@ -1,5 +1,6 @@
-# FLED
+# FLED: a full-length eccDNA detector for long-reads se-quencing data
 Full Length eccDNA detection
+Reconstructing the full-length sequence of extrachromosomal circular DNA (eccDNA) from short sequencing reads has proved challenging given the similarity of eccDNAs and their corresponding linear DNAs. Previous sequencing methods were unable to achieve high-throughput detection of full-length eccDNAs. Herein, a novel algorithm was developed, called Full-Length eccDNA Detection (FLED), to reconstruct the sequence of eccDNAs based on the strategy that combined rolling circle amplification (RCA) and nanopore long-reads sequencing technology. Seven human epithelial and cancer cell line samples were analyzed by FLED and over 5,000 full-length eccDNAs were identified per sample. The structures of identified eccDNAs were validated by both PCR and Sanger sequencing. Compared to other published nanopore-based eccDNA detectors, FLED exhibited higher sensitivity. In cancer cell lines, the genes overlapped with eccDNA regions were enriched in cancer-related pathways and cis-regulatory elements can be predicted in the upstream or downstream of intact genes on eccDNA molecules, and the expressions of these cancer-related genes were dysregulated in tumor cell lines, indicating the regulatory potency of eccDNAs in biological processes. The proposed method takes advantage of nanopore long reads and enables unbiased reconstruction of full-length eccDNA sequences.
 
 ## Requirements
 * Software
@@ -93,5 +94,7 @@ FLED Detection -i align.sorted.bam -fq example.q7.fastq -o example -dir FLEDoutp
 |  13 | readID          | ID of reads supporting this eccDNA |
 
 ## Citation
+Fuyu L, Wenlong M, Wenxiang L, Ying W, Xiaohan L, Xianjun D, Yunfei B. (2023): FLED: a full-length eccDNA detector for long-reads se-quencing data. bioRxiv. Preprint. 
+doi: https://doi.org/10.1101/2023.06.21.545840
 
 ## License
