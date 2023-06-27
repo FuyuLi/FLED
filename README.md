@@ -94,7 +94,7 @@ FLED Detection -i align.sorted.bam -fq example.q7.fastq -o example -dir FLEDoutp
 |  13 | readID          | ID of reads supporting this eccDNA |
 
 ## Citation
-Fuyu L, Wenlong M, Wenxiang L, Ying W, Xiaohan L, Xianjun D, Yunfei B. (2023): FLED: a full-length eccDNA detector for long-reads se-quencing data. bioRxiv. Preprint. 
+Fuyu L, Wenlong M, Wenxiang L, Ying W, Xiaohan L, Xianjun D, Yunfei B. (2023): FLED: a full-length eccDNA detector for long-reads sequencing data. bioRxiv. Preprint. 
 doi: https://doi.org/10.1101/2023.06.21.545840
 
 ## License
