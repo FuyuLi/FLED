@@ -4,11 +4,13 @@ Reconstructing the full-length sequence of extrachromosomal circular DNA (eccDNA
 
 ## Requirements
 * Software
+    - [minimap2]
+    - [samtools](==1.10 )
 * Package (python 3 +)
-    - [pysam](http://pysam.readthedocs.org/en/latest/) (>=0.16)
+    - [pysam](http://pysam.readthedocs.org/en/latest/) (==0.22)
     - [networkx](https://github.com/networkx/networkx)(>=2.5)
     - [progressbar](https://pypi.org/project/progressbar)(>=2.5)
-    - [biopython](https://biopython.org/)(>=1.76)
+    - [biopython](https://biopython.org/)(==1.76)
     - [numpy](https://numpy.org/)(>=1.19.1)
     - [pyspoa](https://pypi.org/project/pyspoa/)(==0.0.6)
     - [scipy](https://pypi.org/project/scipy/)(==1.5.3)
@@ -27,11 +29,6 @@ Users can prepare the external files under the following instructions:
 samtools faidx $genome
 ```
 
-2) Indexed coordinate sorted bam file
-```
-minimap2 -t 10 -ax map-ont $genome $fastq | samtools sort -@ 4 -O bam -o align.sorted.bam
-samtools index  -@ 10 align.sorted.bam align.sorted.bam.bai
-```
 
 ## Usage
 ```
@@ -51,7 +48,7 @@ usage: FLED Detection [options]
 Identify extrachromosomal circular DNA from Nanopore reads
 
 required arguments:
-  -i                    Input: Indexed coordinate sorted bam file
+  -ref                  Input: reference genome fasta file
   -fq                   Input: Nanopore fastq file
 
 optional arguments:
@@ -67,14 +64,16 @@ optional arguments:
 
 ### Example
 ```
-FLED Detection -i align.sorted.bam -fq example.q7.fastq -o example -dir FLEDoutput -t 8
+FLED Detection -ref genome.fa -fq example.q7.fastq -o example -dir FLEDoutput -t 8
 ```
 
 ## Output
 | File name         |  Details | 
 |   :---            | ---        |
-| out.DiGraph.OnesegJunction.fa         | full-length sequences of Full eccDNAs detected by FLED |
-| out.DiGraph.OnesegJunction.out        | list of eccDNAs detected |
+| out.DiGraph.MulsegFullJunction.fa         | full-length sequences of Full multifragment eccDNAs detected by FLED |
+| out.DiGraph.MulsegFullJunction.out        | list of full-length multifragment eccDNAs detected |
+| out.DiGraph.OnesegJunction.fa         | full-length sequences of Full simple eccDNAs detected by FLED |
+| out.DiGraph.OnesegJunction.out        | list of simple eccDNAs detected |
 
 ### out.DiGraph.OnesegJunction.out
 | No. | Column name     |  Details | 
@@ -94,7 +93,6 @@ FLED Detection -i align.sorted.bam -fq example.q7.fastq -o example -dir FLEDoutp
 |  13 | readID          | ID of reads supporting this eccDNA |
 
 ## Citation
-Fuyu L, Wenlong M, Wenxiang L, Ying W, Xiaohan L, Xianjun D, Yunfei B. (2023): FLED: a full-length eccDNA detector for long-reads sequencing data. bioRxiv. Preprint. 
-doi: https://doi.org/10.1101/2023.06.21.545840
+Li F, Ming W, Lu W, Wang Y, Li X, Dong X, Bai Y. FLED: a full-length eccDNA detector for long-reads sequencing data. Brief Bioinform. 2023 Sep 22;24(6):bbad388. doi: 10.1093/bib/bbad388. PMID: 37930031; PMCID: PMC10632013.
 
 ## License
