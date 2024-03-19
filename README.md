@@ -4,8 +4,8 @@ Reconstructing the full-length sequence of extrachromosomal circular DNA (eccDNA
 
 ## Requirements
 * Software
-    - [minimap2]
-    - [samtools](==1.10 )
+    - [minimap2](https://github.com/lh3/minimap2)
+    - [samtools](https://github.com/samtools/samtools)(==1.10 )
 * Package (python 3 +)
     - [pysam](http://pysam.readthedocs.org/en/latest/) (==0.22)
     - [networkx](https://github.com/networkx/networkx)(>=2.5)
