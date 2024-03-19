@@ -12,6 +12,9 @@ from spoa import poa
 import sys
 import argparse
 from tqdm import tqdm
+import subprocess
+from Bio.SeqRecord import SeqRecord
+from queue import Queue
 
 
 class Segment(object):
@@ -769,11 +772,266 @@ def output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannw
 
 
 
+def multisegs_cluster(data, maxgap) :
+    data.sort()
+    groups = [[data[0]]]
+    segnum = len(data[0])
+    for x in data[1:]:
+        newGroup = True
+        for group in groups[1:] :
+            inGroup = True
+            for seg in range(segnum) :
+                if (x[seg][0] == group[-1][seg][0]) and (abs(x[seg][1] - group[-1][seg][1]) <= maxgap) and \
+                        (abs(x[seg][2] - group[-1][seg][2]) <= maxgap) :
+                    continue
+                else :
+                    inGroup = False
+                    break
+            if inGroup == True :
+                newGroup = False
+                group.append(x)
+        if newGroup == True :
+            groups.append([x])
+    return groups
+
+
+
+def Multiple_Segment_Merge(multiseg, merge_dist) :
+    print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"), "Merge and Count Multiple Segments junctions\n")
+    if len(multiseg) == 0 :
+        return True
+    else :
+        Seginfo = {}
+        Segreads = defaultdict(list)
+        for segnum in multiseg :
+            if len(multiseg[segnum]) < 2 :
+                continue
+            else :
+                allsegs = []
+                segreads = defaultdict(list)
+                for segments in multiseg[segnum] :
+                    minseg = min(segments[0:segnum])
+                    segqueue = Queue(segnum)
+                    for minnum in range(0,segnum) :
+                        if segments[minnum] == minseg :
+                            break
+                        else :
+                            segqueue.put(segments[minnum])
+                    sortedSegs = segments[minnum:segnum]
+                    for item in range(0,segqueue.qsize()) :
+                        sortedSegs.append(segqueue.get())
+                    for segment in sortedSegs :
+                        segment[1] = int(segment[1])
+                        segment[2] = int(segment[2])
+                    segreads[str(sortedSegs)].append(segments[segnum])
+                    allsegs.append(sortedSegs)
+                segsgroup = multisegs_cluster(allsegs, merge_dist)
+                for group in segsgroup :
+                    Seginfo[str(group[0])] = group
+                    for item in group :
+                        Key = str(group[0])
+                        Segreads[Key].append(segreads[str(item)])
+        for junction in Segreads :
+            reads = str(Segreads[junction]).replace('[','').replace(']','').replace("'",'').split(', ')
+            Segreads[junction] = list(np.unique(reads))
+    return(Seginfo, Segreads)
 
 
 
 
 
+def MS_PseudoReference(OutDir, Segreads, refFa, fastq, threadnum, verbose) :
+    if verbose >= 3 :
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+              "Generate PseudoReference for Multiple-segments eccDNA\n")
+    ### mkdir temp file
+    if not os.path.exists(OutDir + '/MStemp'):
+        os.makedirs(OutDir + '/MStemp')
+    tmpbed = OutDir + '/MStemp/' + "temp.multiseg.bed"  ## bed file for all segments of mulitiple-fragments eccDNA
+    tmpfa = OutDir + '/MStemp/' + "temp.multiseg.fa"  ## fasta file for all segments of mulitiple-fragments eccDNA
+    tmpid = OutDir + '/MStemp/' + "temp.multiseg.read.id"  ## full-length reads of mulitiple-fragments eccDNA
+    tmpPRfa = OutDir + '/MStemp/' + "temp.PseudoReference.fa"  ## PseudoReference of mulitiple-fragments eccDNA
+    tmpfq = OutDir + '/MStemp/' + "temp.multiseg.read.fastq"
+    tmpsam = OutDir + '/MStemp/' + "temp.2PseudoReference.sam"
+    tmpbam = OutDir + '/MStemp/' + "temp.2PseudoReference.sorted.bam"
+    tmpbai = OutDir + '/MStemp/' + "temp.2PseudoReference.sorted.bam.bai"
+    with open(tmpbed, "w+") as TEMPBED:
+        with open(tmpid, "w+") as TEMPID:
+            for junction in Segreads:
+                TEMPBED.write(
+                    junction.replace("'", "").replace("], [", "\n").replace(", ", "\t").replace("[", "").replace("]","") + '\n')
+                for read in Segreads[junction]:
+                    TEMPID.write(read + '\n')
+    get_segfa = subprocess.call(["bedtools", "getfasta", "-fi", refFa, "-bed", tmpbed, "-fo", tmpfa], shell=False)  ##
+    if get_segfa != 0:
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+              "An error happened during bedtools getfasta for PseudoReference generation. (bedtools can't read fasta index in presence of hla alts.) Exiting")
+        #sys.exit()
+    seqs = {}
+    with open(tmpfa, 'r') as fa:
+        for record in SeqIO.parse(fa, 'fasta'):
+            seqs[record.id] = record.seq
+    ecclist = []
+    for record in Segreads:
+        eccdna = record.strip().lstrip('[[').rstrip(']]').split('], [')
+        eccid = ''
+        pseudoref = ''
+        for segment in eccdna:
+            segment = segment.split(', ')
+            segid = segment[0].strip("'") + ':' + str(segment[1]) + '-' + str(segment[2])
+            eccid += segid + '|'
+            pseudoref += seqs[segid]
+        eccid = eccid.rstrip('|')
+        eccref = SeqRecord(pseudoref, id=eccid)
+        ecclist.append(eccref)
+    SeqIO.write(ecclist, tmpPRfa, "fasta")
+    with open(tmpfq, "wb") as TMPFQ:
+        get_multireads = subprocess.call(
+            ["seqtk", "subseq", fastq, tmpid], stdout=TMPFQ)
+    if get_multireads != 0:
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+              "An error happened during seqtk subseq for full-length reads extraction. Exiting")
+        #sys.exit()
+    realignment = subprocess.call(["minimap2", "-t", str(threadnum), "-ax", "map-ont", tmpPRfa, tmpfq, "-o", tmpsam],
+                                  shell=False)
+    samtoolsSort = subprocess.call(["samtools", "sort", "-@", str(threadnum), "-O", "bam", "-o", tmpbam, tmpsam],
+                                   shell=False)
+    samtoolsIndex = subprocess.call(["samtools", "index", "-@", str(threadnum), tmpbam, tmpbai], shell=False)
+    removetemp = subprocess.call(["rm", "-f", tmpbed, tmpfa, tmpid, tmpPRfa, tmpsam], shell=False)
+    if (realignment + samtoolsSort + samtoolsIndex) != 0:
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+              "An error happened during minimap2 (or samtools) for full-length reads alignment. Exiting")
+        #sys.exit()
+    return (tmpbam, tmpfq)
+#tmpbam, tmpfq = MS_PseudoReference(OutDir, Segreads, refFa, fastq, threadnum, verbose)
+#multibegin = time.time()
+#MS_SAInfo, MSLinearReads, MSreadlens, MSreadnum, MSmappedreadsnum = get_continuous_SAinfo(tmpbam,read_gap, mapq_cutoff, verbose, multibegin)
+
+
+def parse_junction_from_SAinfo_of_MultipleSegment_FLreads(SAInfo, readlens, verbose) :
+    if verbose >= 3:
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"), "Parse continuous SAinfo  for multiple-segments eccDNA detection\n")
+    Tag = {}  # Full, Break
+    Juncinfo = {}
+    Junctions = defaultdict(list)
+    for readid in SAInfo.keys():
+        if len(SAInfo[readid]) < 2 :
+            Tag[readid] = "Break"
+            #print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),"An error happenend during execution. Exiting")
+            #sys.exit()
+        else :
+            info = SAInfo[readid]
+            SAnum = len(info)
+            DG = nx.DiGraph()
+            lastnode = info[0][2]
+            for subscript in range(1, SAnum):
+                newnode = info[subscript][2]
+                if DG.has_edge(lastnode, newnode):
+                    DG.edges[lastnode, newnode]['weight'] += 1
+                else:
+                    DG.add_edge(lastnode, newnode, weight=1)
+            cycles = list(nx.simple_cycles(DG))
+            maxweight = 0
+            for cycle in cycles:
+                if len(cycle) == 1:
+                    Tag[readid] = "Full"
+                    cycleweight = DG.get_edge_data(cycle[0], cycle[0])['weight']
+                    if cycleweight > maxweight:
+                        maxweight = cycleweight
+                        bestcycle = cycle[0]
+            if maxweight == 0 :
+                Tag[readid] = 'invalid'
+            else:
+                cyclelen = 0
+                for item in info :
+                    if item[2] == bestcycle :
+                        cyclelen += (item[1]-item[0])
+                if cyclelen / readlens[readid] >= 0.5:
+                    Juncinfo[readid] = bestcycle
+                    Junctions[bestcycle].append(readid)
+                    Tag[readid] = 'Full'
+                else :
+                    Tag[readid] = 'invalid'
+    return (Juncinfo, Junctions, Tag)
+#MS_Juncinfo, MS_Junctions, MS_Tag = parse_junction_from_SAinfo_of_MultipleSegment_FLreads(MS_SAInfo, MSreadlens, verbose)
+
+
+def FullSeqs_MS(MS_Junctions, MS_SAInfo, input_fq, verbose, filtering_level):
+    if verbose >= 3 :
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"), "Full sequences for multiple-segments eccDNA\n")
+    eccDNAseq = defaultdict(str)
+    if filtering_level == 'high' :
+        supporting_reads = 5
+    elif filtering_level == 'low' :
+        supporting_reads = 2
+    else :
+        supporting_reads = 1
+    readseq = {}
+    for fq in SeqIO.parse(input_fq, "fastq"):
+        readseq[fq.name] = str(fq.seq)
+    for junction in MS_Junctions.keys():
+        if len(MS_Junctions[junction]) < supporting_reads :
+            ccs = "-"
+        else:
+            segseqs = []
+            CCS = False
+            for readid in MS_Junctions[junction] :
+                if len(MS_SAInfo[readid]) > 2 :
+                    CCS = True
+                    sainfo = MS_SAInfo[readid]
+                    for sanum in range(len(sainfo) - 1):
+                        segment = AlignSeg(sainfo[sanum])
+                        nextseg = AlignSeg(sainfo[sanum + 1])
+                        if (junction == segment.chrom) and (junction == nextseg.chrom) :
+                            misbase = nextseg.readS - segment.readE
+                            seq = readseq[readid][segment.readS:nextseg.readS]
+                            segseqs.append(seq)
+                    sanum += 1
+                    segment = AlignSeg(sainfo[sanum])
+                    if (junction == segment.chrom) :
+                        seq = readseq[readid][segment.readS:segment.readE]
+                        segseqs.append(seq)
+            #print(junction + '\t' + str(len(segseqs)))
+            if (not CCS) :
+                ccs = "-"
+            else:
+                ccs, _ = poa(segseqs, 2, False, 10, -4, -8, -2, -24, -1)
+            #print(junction + '\t' + str(len(segseqs)) + '\t' + str(len(ccs)))
+        eccDNAseq[junction] = ccs
+    return (eccDNAseq)
+#MSeccDNAseq = FullSeqs_MS(MS_Junctions, MS_SAInfo, tmpfq, verbose, filtering_level)
+
+
+
+def MSoutput(MulsegJunction, MulsegFa, MS_Junctions, MSeccDNAseq, Label, filtering_level, verbose) :
+    FullMSeccDNAnum = 0
+    if filtering_level == 'high':
+        supporting_reads = 5
+        P_value = 0.01
+        ratio = 0.6
+    elif filtering_level == 'low':
+        supporting_reads = 2
+        P_value = 0.05
+        ratio = 0.5
+    else:
+        supporting_reads = 1
+        P_value = 1
+        ratio = 0
+    if verbose >= 3:
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+              "Write Multiple Segments junctions to OutFile\n")
+    with open(MulsegJunction, "w+") as outFileMS :
+        with open(MulsegFa, "w+") as outFaMS:
+            for junction in MS_Junctions.keys():
+                if len(MS_Junctions[junction]) >= supporting_reads :
+                    segments = junction.split("|")
+                    juncrecord = '\t'.join([junction, Label, "Full", str(len(segments)), str(len(MS_Junctions[junction]))])
+                    outFileMS.write(juncrecord + '\n')
+                    farecord = '> ' + junction + '\t' + Label + '\tFull' + '\n' + MSeccDNAseq[junction] + '\n'
+                    outFaMS.write(farecord)
+                    FullMSeccDNAnum  += 1
+    return (FullMSeccDNAnum)
+#FullMSeccDNAnum = MSoutput("MS_OUT.out", "MS_FA.fa", MS_Junctions, MSeccDNAseq, Label, filtering_level, verbose)
 
 
 

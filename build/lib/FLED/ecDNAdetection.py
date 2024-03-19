@@ -2,15 +2,16 @@ import sys
 import os
 import argparse
 import datetime
+import subprocess
 from FLED._utils import *
 
 
 class detection:
     """Class for full length ecDNA detection from nanopore sequencing data"""
-    def __init__(self,ont_bam,input_fq, label,out_dir,mapq_cutoff, read_gap, merge_dist,
+    def __init__(self,reffa,input_fq, label,out_dir,mapq_cutoff, read_gap, merge_dist,
                  verbose, filter_level, threads, parser ):
         #input-output
-        self.ont_bam = ont_bam
+        self.reffa = reffa
         self.input_fq = input_fq
         self.label = label
         self.out_dir = out_dir
@@ -43,16 +44,44 @@ class detection:
             os.makedirs(self.out_dir)
         OnesegJunction = self.out_dir + '/' + self.label + '.DiGraph.OnesegJunction.out'
         OnesegFa = self.out_dir + '/' + self.label + '.DiGraph.OnesegJunction.fa'
-#        OnesegFullJunction = self.out_dir + '/' + self.label + '.DiGraph.OnesegFullJunction.out'
-#        OnesegBreakJunction = self.out_dir + '/' + self.label + '.DiGraph.OnesegBreakJunction.out'
-#        MulsegFullJunction = self.out_dir + '/' + self.label + '.DiGraph.MulsegFullJunction.out'
-#        reads4assemblefile = self.out_dir + '/' + self.label + '.reads4canu.list'
+        MulsegJunction = self.out_dir + '/' + self.label + '.DiGraph.MulsegFullJunction.out'
+        MulsegFa = self.out_dir + '/' + self.label + '.DiGraph.MulsegFullJunction.fa'
+
 
         if self.verbose >= 3:
-            print("eccDNA Detection Begins !\n")
+            print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                    "eccDNA Detection Begins !\n")
 
         # timing
         begin = time.time()
+
+        if self.verbose >= 3:
+            print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                    "Minimap2 alignment Begins !\n")
+
+        if not os.path.exists(self.out_dir + '/MappingResult'):
+            os.makedirs(self.out_dir + '/MappingResult')
+        samfile = self.out_dir + '/MappingResult/' + self.label + ".sam"
+        bamfile = self.out_dir + '/MappingResult/' + self.label + ".sorted.bam"
+        baifile = self.out_dir + '/MappingResult/' + self.label + ".sorted.bam.bai"
+
+        alignment = subprocess.call(["minimap2", "-t", str(self.threads), "-ax", "map-ont", self.reffa, self.input_fq, "-o", samfile], shell=False)
+        if alignment  != 0:
+            print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                  "An error happened during minimap2 for reads alignment. Exiting")
+            sys.exit()
+        else:
+            print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                    "Minimap2 alignment Done!")
+        samtoolsSort = subprocess.call(["samtools", "sort", "-@", str(self.threads), "-O", "bam", "-o", bamfile, samfile], shell=False)
+        samtoolsIndex = subprocess.call(["samtools", "index",bamfile, baifile], shell=False)
+        if (samtoolsSort + samtoolsIndex) != 0:
+            print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                  "An error happened during samtools. Exiting")
+            sys.exit()
+
+
+        self.ont_bam = bamfile
 
         #Parse SAinfo from minimap2 aligner of circle-seq nanopore data to find continuous SA for junction detection
         SAInfo, LinearReads, readlens, readnum, mappedreadsnum = get_continuous_SAinfo(self.ont_bam,self.read_gap, self.mapq_cutoff, self.verbose, begin)
@@ -61,20 +90,42 @@ class detection:
         Juncinfo, Tag, FSJ = parse_junction_from_SAinfo(SAInfo, self.merge_dist, readlens, self.verbose)
         Junctions, multiseg = JuncMerge(Juncinfo, Tag, self.merge_dist, self.verbose)
 
-        # Full Sequence
-        eccDNAseq, revisedJunc = FullSeqs(Junctions, SAInfo, self.input_fq, LinearReads, Tag, self.mapq_cutoff, self.merge_dist, self.verbose, self.threads, self.filter_level)
+        
+        if len(Junctions) > 0 :
+            # Full Sequence
+            eccDNAseq, revisedJunc = FullSeqs(Junctions, SAInfo, self.input_fq, LinearReads, Tag, self.mapq_cutoff, self.merge_dist, self.verbose, self.threads, self.filter_level)
 
-        # Full Single Segment Junctions Coverage
-        ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(self.ont_bam, Junctions, revisedJunc, self.verbose, self.filter_level)  #need to multiple threads
+            # Full Single Segment Junctions Coverage
+            ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(self.ont_bam, Junctions, revisedJunc, self.verbose, self.filter_level)  #need to multiple threads
 
-        #OutPut
-        FullJunc, BreakJunc, eccDNAnum, FulleccDNAnum = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, self.label, self.filter_level,
-               eccDNAseq, revisedJunc, self.verbose)
+            #OutPut
+            FullJunc, BreakJunc, eccDNAnum, FulleccDNAnum = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, self.label, self.filter_level, eccDNAseq, revisedJunc, self.verbose)
+        else :
+            eccDNAnum = 0
+            FulleccDNAnum = 0
 
 
-        # Full Multiple Segments Junctions
-        #Seginfo, Segreads = Multiple_Segment_Merge(multiseg, self.merge_dist)
-        #Multiple_Segment_Write(MulsegFullJunction, Seginfo, Segreads, self.label)
+        if len(multiseg) > 0 :
+            # Full Multiple Segments Junctions
+            Seginfo, Segreads = Multiple_Segment_Merge(multiseg, self.merge_dist)
+
+            # Map full-length reads to PseudoReference for Multiple Segments Junctions
+            tmpbam, tmpfq = MS_PseudoReference(self.out_dir, Segreads, self.reffa, self.input_fq, self.threads, self.verbose)
+
+
+            multibegin = time.time()
+            MS_SAInfo, MSLinearReads, MSreadlens, MSreadnum, MSmappedreadsnum = get_continuous_SAinfo(tmpbam, self.read_gap, self.mapq_cutoff, self.verbose, multibegin)
+
+            # Multiple-segments eccDNA detecion
+            MS_Juncinfo, MS_Junctions, MS_Tag = parse_junction_from_SAinfo_of_MultipleSegment_FLreads(MS_SAInfo, MSreadlens, self.verbose)
+
+            # Full Sequence
+            MSeccDNAseq = FullSeqs_MS(MS_Junctions, MS_SAInfo, tmpfq, self.verbose, self.filter_level)
+
+            # OutPut
+            FullMSeccDNAnum = MSoutput(MulsegJunction, MulsegFa, MS_Junctions, MSeccDNAseq, self.label, self.filter_level, self.verbose)
+        else :
+            FullMSeccDNAnum = 0
 
         end = time.time()
 
@@ -93,6 +144,7 @@ class detection:
             print(("Full-length Reads:  %s") % str(Fullread))
             print(("Detected eccDNA:    %s") % str(eccDNAnum))
             print(("Full-length eccDNA: %s") % str(FulleccDNAnum))
+            print(("Full-length multiple-segments eccDNA: %s") % str(FullMSeccDNAnum))
             print("**************************")
             print("Thanks for using FLED")
 

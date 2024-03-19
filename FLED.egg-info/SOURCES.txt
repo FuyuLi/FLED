@@ -1,4 +1,3 @@
-setup.cfg
 setup.py
 FLED/__init__.py
 FLED/__version__.py

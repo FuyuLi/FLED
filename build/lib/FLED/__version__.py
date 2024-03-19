@@ -1,3 +1,3 @@
-__version__ = '1.5.0'
+__version__ = '1.6.0'
 
-#Multiple processing
+#Multiple segments eccDNA detecteion

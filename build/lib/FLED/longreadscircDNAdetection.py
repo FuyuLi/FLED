@@ -56,7 +56,7 @@ Commands:
                 self.subprogram = self.args_detect()
                 self.args = self.subprogram.parse_args(sys.argv[2:])
 
-                object = detection(self.args.i, self.args.fq, self.args.outPrefix, self.args.directory, self.args.mapq,
+                object = detection(self.args.ref, self.args.fq, self.args.outPrefix, self.args.directory, self.args.mapq,
                                     self.args.gap,
                                     self.args.clustering_dist, self.args.verbose,self.args.filter_level, self.args.threads,
                                     self.subprogram)
@@ -84,14 +84,14 @@ Commands:
 
         # input and output
 
-        required.add_argument('-i', metavar='', help="Input: coordinate sorted bam file")
+        required.add_argument('-ref', metavar='', help="Input: reference genome fasta file")
         required.add_argument('-fq', metavar='', help="Input: fastq file")
 
 
-        if ("-i" in sys.argv) and ("-fq" in sys.argv):
+        if ("-ref" in sys.argv) and ("-fq" in sys.argv):
             optional.add_argument('-o', '--outPrefix', metavar='',
                                   help="Prefix of Output filename",
-                                  default="ecDNA_%s" % sys.argv[sys.argv.index("-i") + 1])
+                                  default="eccDNA")
 
             optional.add_argument('-dir', '--directory', metavar='',
                                   help="Output directory, default is the working directory",
@@ -173,7 +173,7 @@ Commands:
 
             time.sleep(0.01)
             sys.stderr.write(
-                "\nNo input or output input given to Detection, be sure that you are providing the flags'-i' and '-fq'"
+                "\nNo input or output input given to Detection, be sure that you are providing the flags'-ref' and '-fq'"
                 "\nExiting\n")
             sys.exit(0)
 
