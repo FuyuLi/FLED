@@ -6,6 +6,8 @@ Reconstructing the full-length sequence of extrachromosomal circular DNA (eccDNA
 * Software
     - [minimap2](https://github.com/lh3/minimap2)
     - [samtools](https://github.com/samtools/samtools)(==1.10 )
+    - [bedtools](https://bedtools.readthedocs.io/en/latest/index.html)
+    - [seqtk](https://github.com/lh3/seqtk)
 * Package (python 3 +)
     - [pysam](http://pysam.readthedocs.org/en/latest/) (==0.22)
     - [networkx](https://github.com/networkx/networkx)(>=2.5)
@@ -14,12 +16,19 @@ Reconstructing the full-length sequence of extrachromosomal circular DNA (eccDNA
     - [numpy](https://numpy.org/)(>=1.19.1)
     - [pyspoa](https://pypi.org/project/pyspoa/)(==0.0.6)
     - [scipy](https://pypi.org/project/scipy/)(==1.5.3)
+    - [tqdm](https://pypi.org/project/tqdm/)(>=4.51.0)
  
 ## Installation
 ```bash
 git clone https://github.com/FuyuLi/FLED.git
 cd FLED
 python ./setup.py install
+```
+or
+```bash
+git clone https://github.com/FuyuLi/FLED.git
+cd FLED/dist
+pip install FLED-1.7.0.tar.gz
 ```
 
 ## Required files
