@@ -1,11 +1,7 @@
-Metadata-Version: 1.1
+Metadata-Version: 2.1
 Name: FLED
-Version: 1.6.0
+Version: 1.7.0
 Summary: full length ecDNA Detection tools
 Home-page: https://github.com/FuyuLi/FLED
 Author: Lifuyu
-Author-email: UNKNOWN
-License: UNKNOWN
-Description: UNKNOWN
-Platform: UNKNOWN
 Classifier: License :: .

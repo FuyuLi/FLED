@@ -96,7 +96,15 @@ class detection:
             eccDNAseq, revisedJunc = FullSeqs(Junctions, SAInfo, self.input_fq, LinearReads, Tag, self.mapq_cutoff, self.merge_dist, self.verbose, self.threads, self.filter_level)
 
             # Full Single Segment Junctions Coverage
-            ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(self.ont_bam, Junctions, revisedJunc, self.verbose, self.filter_level)  #need to multiple threads
+            covfile = self.out_dir + '/MappingResult/' + self.label + ".coverage"
+
+            samtoolsIndex = subprocess.call(["samtools", "depth", "-Q", str(self.mapq_cutoff), "-d", "0", "-o", covfile, bamfile], shell=False)
+            if samtoolsIndex  != 0:
+                print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"),
+                  "An error happened during samtools depth. Exiting")
+                sys.exit()
+
+            ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(covfile, Junctions, revisedJunc, self.verbose, self.filter_level)  #need to multiple threads
 
             #OutPut
             FullJunc, BreakJunc, eccDNAnum, FulleccDNAnum = output(OnesegJunction, OnesegFa, Junctions, Tag, ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR, self.label, self.filter_level, eccDNAseq, revisedJunc, self.verbose)

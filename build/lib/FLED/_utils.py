@@ -624,7 +624,7 @@ def FullSeqs(Junctions, SAInfo, input_fq, LinearReads, Tag, mapq_cutoff, merge_d
 
 
 
-def Coverage_count(ont_bam, Junctions, revisedJunc, verbose, filtering_level) :
+def Ori_Coverage_count(ont_bam, Junctions, revisedJunc, verbose, filtering_level) :
     '''
     :param ont_bam:
     :param Junctions:
@@ -710,6 +710,69 @@ def Coverage_count(ont_bam, Junctions, revisedJunc, verbose, filtering_level) :
     return(ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR)
 
 #ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR = Coverage_count(ont_bam, Junctions, revisedJunc, verbose, filtering_level)
+
+def Coverage_count(covfile, Junctions, revisedJunc, verbose, filtering_level) :
+    if verbose >= 3 :
+        print(datetime.datetime.now().strftime("\n%Y-%m-%d %H:%M:%S:"), "Coverage count around junctions\n")
+    if filtering_level == 'high' :
+        supporting_reads = 5
+    elif filtering_level == 'low' :
+        supporting_reads = 2
+    else :
+        supporting_reads = 1
+    ratiocovL = {}
+    ratiocovR = {}
+    mannwhitneyuL = {}
+    mannwhitneyuR = {}
+    cov_range = 50
+    num = 0
+    total = len(Junctions)
+    if verbose >= 3 :
+        pbar = ProgressBar().start()
+    Covdict = defaultdict(int)
+    with open(covfile,"r") as covFile:
+        for line in covFile:
+            chrom, pos, depth= line.strip().split("\t")
+            Pos = chrom + '\t' + pos
+            Covdict[Pos] = int(depth)
+    for junction in Junctions :
+        if len(Junctions[junction]) < supporting_reads :
+            num += 1
+            if verbose >= 3:
+                pbar.update(int((num / (total)) * 100))
+            continue
+        chrom = junction.split('\t')[0]
+        junL = int(revisedJunc[junction].split('\t')[1])
+        junR = int(revisedJunc[junction].split('\t')[2])
+        sumLin = []
+        sumLout = []
+        sumRin = []
+        sumRout = []
+        for dist in range(cov_range) :
+            LoutPos = chrom + '\t' + str(junL - (cov_range - 1 - dist) )
+            LinPos = chrom + '\t' + str(junL + dist + 1 )
+            RinPos = chrom + '\t' + str(junR - (cov_range - 1 - dist) )
+            RoutPos = chrom + '\t' + str(junR + dist + 1  )
+            sumLin.append(Covdict[LinPos])
+            sumLout.append(Covdict[LoutPos])
+            sumRin.append(Covdict[RinPos])
+            sumRout.append(Covdict[RoutPos])
+        ratioL = sum(sumLin) / (sum(sumLout) + sum(sumLin) + 1)
+        ratiocovL[junction] = ratioL
+        if sumLout == sumLin:
+            mannwhitneyuL[junction] = 1
+        else:
+            mannwhitneyuL[junction] = stats.mannwhitneyu(sumLin, sumLout, alternative='greater').pvalue
+        ratioR = sum(sumRin) / (sum(sumRout) + sum(sumRin) + 1)
+        ratiocovR[junction] = ratioR
+        if sumRout == sumRin:
+            mannwhitneyuR[junction] = 1
+        else:
+            mannwhitneyuR[junction] = stats.mannwhitneyu(sumRin, sumRout, alternative='greater').pvalue
+        num += 1
+        if verbose >= 3:
+            pbar.update(int((num / (total)) * 100))
+    return(ratiocovL, ratiocovR, mannwhitneyuL, mannwhitneyuR)
 
 
 
